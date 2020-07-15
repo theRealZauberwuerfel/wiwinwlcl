@@ -1,0 +1,80 @@
+#+TITLE: Little bits of CLOS magic
+
+Hi there, if you've met OOP in some boring and mangled mainstream language like Java/C++/Python, behold!
+
+I'll show you simple examples of ~CLOS~, the Common Lisp Object System.
+It comes with a ton of extra features and handles much of your system by itself.
+
+Underlying there exists a meta-object protocol, from which stuff like meta classes
+in Python also comes.
+
+First of all, a big difference is that classes and methods are decoupled and ~CLOS~
+is /just a library./ You also have multi dispatch methods, multiple inheritance (I mean
+inheriting from more than one super class at a time) and don't have public/private methods
+which also give you much flexibility.
+
+A last qualitative thing I wanna mention: You can specialize a method down to a
+/single instance./
+
+So, now to practice. I show you the power of /method combinations/. Imagine you have some
+code, that generates TikZ code. 
+As at most places, you have for the most environments ~\begin{...}~ and ~\end{...}~.
+
+We define the class ~tikz-picture~ as follows:
+
+#+begin_src lisp
+  (defclass tikz-picture (*superclasses*) (*fields*))
+#+end_src
+
+But here ~*superclasses*~ and ~*fields*~ are ~NIL~ and we can define the standard
+~print-object~ method for instances of this class.
+
+#+begin_src lisp
+  (defmethod print-object ((obj tikz-picture) stream)
+    (format stream "~%"))
+#+end_src
+
+This just gives you a newline printed when you make an instance.
+
+#+begin_src lisp
+  (make-instance 'tikz-picture)
+#+end_src
+
+Two of the basic method combinations are ~:before~ and ~:after~ which help you
+keep the primary method hygienic and handle stuff between the layers.
+
+#+begin_src lisp
+  (defmethod print-object :before ((obj tikz-picture) stream)
+    (format stream "\\begin{tikzpicture}~%"))
+
+  (defmethod print-object :after ((obj tikz-picture) stream)
+    (format stream "\\end{tikzpicture}~%"))
+#+end_src
+
+See? Now we can maintain this in the right parts. There are more method combinations
+and with ~define-method-combination~ you can also make your own! But at some point
+in your inheritance sandwich those need a primary method defined. ~CLOS~ does
+its job pretty well and you can sit down with less worries.
+
+Now another more magical thing. In default every field in a classes object is
+allocated per instance. You can change that at every point in your program to
+~:class~. If you overwrite the field at some point, ~CLOS~ changes *all* made instances
+to the correct value.
+
+#+begin_src lisp -n
+  (defclass person ()
+    ((name               <- field name
+      :initarg :name     <- how to initialize the field
+      :initform ""       <- if nothing is given this is default
+      :accessor name)    <- get and set the field
+     (age
+      :initarg :age
+      :allocation :class <- look at here, this is were magic happens!
+      :accessor age)))
+#+end_src
+
+If we now do ~(defvar *person1* (make-instance 'person :name "Person1" :age 30))~ the age of 30
+is given to the person class. Now doing ~(defvar *person2* (make-instance 'person :name "Person2"))~
+and ~(inspect *person2*)~ you'll see that age is not ~unbound~ (or ~NIL~) but 30.
+
+You can change the class definition even at /runtime/. ``What?!'' you'll ask.

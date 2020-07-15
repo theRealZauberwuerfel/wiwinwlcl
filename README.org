@@ -1,0 +1,6 @@
+* wiwinwlcl
+  :PROPERTIES:
+  :CUSTOM_ID: wiwinwlcl
+  :END:
+
+What I wish I knew when learning Common Lisp
